@@ -8,17 +8,17 @@ node('build-slave') {
         String ANSI_YELLOW = "\u001B[33m"
 
         ansiColor('xterm') {
-            stage('Checkout') {
-                tag_name = env.JOB_NAME.split("/")[-1]
-                pre_checks()
-                if (!env.hub_org) {
-                    println(ANSI_BOLD + ANSI_RED + "Uh Oh! Please set a Jenkins environment variable named hub_org with value as registery/sunbidrded" + ANSI_NORMAL)
-                    error 'Please resolve the errors and rerun..'
+            withEnv(["JAVA_HOME=${JAVA11_HOME}"]) {
+                stage('Checkout') {
+                    tag_name = env.JOB_NAME.split("/")[-1]
+                    pre_checks()
+                    if (!env.hub_org) {
+                        println(ANSI_BOLD + ANSI_RED + "Uh Oh! Please set a Jenkins environment variable named hub_org with value as registery/sunbidrded" + ANSI_NORMAL)
+                        error 'Please resolve the errors and rerun..'
+                    } else
+                        println(ANSI_BOLD + ANSI_GREEN + "Found environment variable named hub_org with value as: " + hub_org + ANSI_NORMAL)
                 }
-                else
-                    println(ANSI_BOLD + ANSI_GREEN + "Found environment variable named hub_org with value as: " + hub_org + ANSI_NORMAL)
-              }
-                cleanWs()  
+                cleanWs()
                 def scmVars = checkout scm
                 checkout scm: [$class: 'GitSCM', branches: [[name: "refs/tags/$tag_name"]], userRemoteConfigs: [[url: scmVars.GIT_URL]]]
                 build_tag = tag_name + "_" + env.BUILD_NUMBER
@@ -26,15 +26,9 @@ node('build-slave') {
                 artifact_version = tag_name + "_" + commit_hash
                 echo "build_tag: " + build_tag
 
+                def scmVars = checkout scm
+                checkout scm: ([$class: 'GitSCM', branches: [[name: "refs/heads/master"]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: true]], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'private_repo_credentials', url: "https://github.com/DIKSHA-NCTE/Diksha-Bot.git"]]])
 
-                echo "public_repo_commit_hash: " + public_repo_commit_hash
-                bot_repo_url = params.diksha_bot_repo 
-                dir('bot_repo') {
-                       def scmVars = checkout scm
-                       checkout scm: ([$class: 'GitSCM', branches: [[name: "refs/tags/params.diksha_bot_tag"]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: true]], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'private_repo_credentials', url: "$bot_repo_url"]]])
-                       private_repo_commit_hash = params.diksha_bot_tag
-                    }   
-            }
 
             stage('Build') {
                 env.NODE_ENV = "build"
@@ -47,16 +41,23 @@ node('build-slave') {
                 }
                 
             }
-            stage('ArchiveArtifacts') {
+
+
+//            stage ArchiveArtifacts
                 archiveArtifacts "metadata.json"
                 currentBuild.description = "${build_tag}"
-            }
-        }
 
+            }
+            currentBuild.result = "SUCCESS"
+            slack_notify(currentBuild.result, tag_name)
+            email_notify()
+            auto_build_deploy()
+        }
     }
     catch (err) {
         currentBuild.result = "FAILURE"
+        slack_notify(currentBuild.result, tag_name)
+        email_notify()
         throw err
     }
-
 }
