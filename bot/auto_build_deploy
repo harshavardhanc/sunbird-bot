@@ -17,8 +17,8 @@ node('build-slave') {
                 }
                 else
                     println(ANSI_BOLD + ANSI_GREEN + "Found environment variable named hub_org with value as: " + hub_org + ANSI_NORMAL)
-                cleanWs()
-
+              }
+                cleanWs()  
                 def scmVars = checkout scm
                 checkout scm: [$class: 'GitSCM', branches: [[name: "refs/tags/$tag_name"]], userRemoteConfigs: [[url: scmVars.GIT_URL]]]
                 build_tag = tag_name + "_" + env.BUILD_NUMBER
@@ -26,14 +26,14 @@ node('build-slave') {
                 artifact_version = tag_name + "_" + commit_hash
                 echo "build_tag: " + build_tag
 
-                
+
                 echo "public_repo_commit_hash: " + public_repo_commit_hash
                 bot_repo_url = params.diksha_bot_repo 
                 dir('bot_repo') {
                        def scmVars = checkout scm
                        checkout scm: ([$class: 'GitSCM', branches: [[name: "refs/tags/params.diksha_bot_tag"]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: true]], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'private_repo_credentials', url: "$bot_repo_url"]]])
                        private_repo_commit_hash = params.diksha_bot_tag
-                    } 
+                    }   
             }
 
             stage('Build') {
