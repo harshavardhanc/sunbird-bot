@@ -26,11 +26,11 @@ node('build-slave') {
                 artifact_version = tag_name + "_" + commit_hash
                 echo "build_tag: " + build_tag
 
-                def scmVars = checkout scm
+                def scmVarsPrivate = checkout scm
                 checkout scm: ([$class: 'GitSCM', branches: [[name: "refs/heads/master"]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CloneOption', depth: 0, noTags: false, reference: '', shallow: true]], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'private_repo_credentials', url: "https://github.com/DIKSHA-NCTE/Diksha-Bot.git"]]])
 
 
-            stage('Build') {
+//            stage('Build') {
                 env.NODE_ENV = "build"
                 print "Environment will be : ${env.NODE_ENV}"
                 build_tag = public_repo_commit_hash + "_" + private_repo_commit_hash + "_" + env.BUILD_NUMBER + "_bot"
